@@ -1,4 +1,4 @@
-gravityforms-csv-schedule-export
-================================
+wordpress-plugin
+================
 
-Exports a days worth of submissions and sends the csv export to an email address.
+Simple template for WordPress plugins.
