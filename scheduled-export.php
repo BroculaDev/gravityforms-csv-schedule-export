@@ -79,7 +79,7 @@ if (class_exists("GFForms")) {
                                     'value' => "weekly"
                                 ),
                                 array(
-                                    'label' => "Monthly - Every 30 Days'",
+                                    'label' => "Monthly - Every 30 Days",
                                     'value' => "monthly"
                                 )
                             )
@@ -93,18 +93,18 @@ if (class_exists("GFForms")) {
     new GFScheduledExport();
 }
 
-
+// Add time frame options to the cron schedule
 add_filter( 'cron_schedules', 'scheduled_export_cron_add_times' );
 function scheduled_export_cron_add_times( $schedules ) {
  	// Adds once weekly to the existing schedules.
  	$schedules['weekly'] = array(
  		'interval' => 604800,
- 		'display' => __( 'Weekly' )
+ 		'display' => __( "Weekly" )
  	);
  	// Add monthly
  	$schedules['monthly'] = array(
  		'interval' => 2592000,
- 		'display' => __( 'Monthly - Every 30 Days' )
+ 		'display' => __( "Monthly - Every 30 Days" )
  	);
  	return $schedules;
 }
