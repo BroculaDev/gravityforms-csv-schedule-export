@@ -93,7 +93,7 @@ if (class_exists("GFForms")) {
     new GFScheduledExport();
 }
 
-// Add time frame options to the cron schedule
+// Add time frame options to the cron schedule - https://codex.wordpress.org/Function_Reference/wp_get_schedules
 add_filter( 'cron_schedules', 'scheduled_export_cron_add_times' );
 function scheduled_export_cron_add_times( $schedules ) {
  	// Adds once weekly to the existing schedules.
