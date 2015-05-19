@@ -59,13 +59,44 @@ if (class_exists("GFForms")) {
 		/**
 		 * Add form settings page with schedule export options.
 		 *
-		 * TODO: Add default email address
+		 * TODO: Add default email address - admin email if empty?
 		 *
 		 * @since    1.0.0
 		 *
 		 */
         public function form_settings_fields($form) {
-            return array(
+
+			//collect the form id from the schedule export settings page url for the current form
+			$form_id = $_REQUEST['id'];
+			$form = apply_filters( "gform_form_export_page_{$form_id}", apply_filters( 'gform_form_export_page', $form ) );
+
+			//collect filter settings TODO: these are currently not used.
+			$filter_settings      = GFCommon::get_field_filter_settings( $form );
+			$filter_settings_json = json_encode( $filter_settings );
+
+			//collect and add the default export fields
+			$form = GFExport::add_default_export_fields( $form );
+			$form_fields = $form['fields'];
+
+			//loop through the fields and format all the inputs in to an array to be rendered as checkboxes
+			foreach($form_fields as $field) {
+				$inputs = $field->get_entry_inputs();
+				if ( is_array( $inputs ) ) {
+					foreach ( $inputs as $input ) {
+						$choices[] = array(
+							'label' => GFCommon::get_label( $field, $input['id'] ),
+							'name' => $input['id'],
+						);
+					}
+				} else if ( ! $field->displayOnly ) {
+					$choices[] = array(
+						'label' => GFCommon::get_label( $field ),
+						'name' => $field->id,
+					);
+				}
+			}
+
+            $inputs = array(
                 array(
 					'title' => "Scheduled Entries Export",
 					'description' => "The settings below will automatically export new entries and send them to the emails below based on the set time frame.",
@@ -119,10 +150,18 @@ if (class_exists("GFForms")) {
 							'label'         => "Email Address",
 							'class'         => "medium",
 							'tooltip'       => "Enter a comma separated list of emails you would like to receive the exported entries file."
-					   )
+					   ),
+						array(
+							'label'   => "Form Fields",
+							'type'    => "checkbox",
+							'name'    => "fields",
+							'tooltip' => "Select the fields you would like to include in the export. Caution: Make sure you are not sending any sensitive information.",
+							'choices' => $choices
+						)
                     )
                 )
             );
+            return $inputs;
         } //END form_settings_fields();
 
     }
@@ -150,4 +189,8 @@ if (class_exists("GFForms")) {
 	 	);
 	 	return $schedules;
 	}
+
+	//TODO: Schedule the Cron Event
+	//TODO: Review the Entries Export and add to Cron Event
+	//TODO: Add Message Last Schedule Run
 }

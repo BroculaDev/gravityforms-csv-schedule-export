@@ -4,7 +4,7 @@ Gravity Forms Schedule Entries Export
 
 This plugin allows you to set forms to export entries to a .CSV file and send them to email addresses on a schedule. The purpose of this it to allow web admins to send form submissions collected on a schedule to people that may not have access to them in the sites back-end. An example of this would be sales lead to a companies sales staff.
 
-##### Options:
+**Options:**
 
 * Activate/Deactivate a schedule on a form by form basis
 * Set how frequently it the entries are exported and emailed.
@@ -28,7 +28,8 @@ To install the plugin just follow the steps below.
 
 ### Frequently Asked Questions
 
-_TODO: Should I add FAQs?_
+**TODO: Should I add FAQs?**
+
 Yes you should, stupid.
 
 ### Screenshots
