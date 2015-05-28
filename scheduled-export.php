@@ -78,20 +78,28 @@ if (class_exists("GFForms")) {
 			$form = GFExport::add_default_export_fields( $form );
 			$form_fields = $form['fields'];
 
+			$choices[] = array(
+				'label'			=> 'Select All',
+				'name'			=> '',
+				'default_value' => 1
+			);
+
 			//loop through the fields and format all the inputs in to an array to be rendered as checkboxes
 			foreach($form_fields as $field) {
 				$inputs = $field->get_entry_inputs();
 				if ( is_array( $inputs ) ) {
 					foreach ( $inputs as $input ) {
 						$choices[] = array(
-							'label' => GFCommon::get_label( $field, $input['id'] ),
-							'name' => $input['id'],
+							'label' 		=> GFCommon::get_label( $field, $input['id'] ),
+							'name' 			=> $input['id'],
+							'default_value' => 1
 						);
 					}
 				} else if ( ! $field->displayOnly ) {
 					$choices[] = array(
-						'label' => GFCommon::get_label( $field ),
-						'name' => $field->id,
+						'label' 		=> GFCommon::get_label( $field ),
+						'name' 			=> $field->id,
+						'default_value' => 1
 					);
 				}
 			}
