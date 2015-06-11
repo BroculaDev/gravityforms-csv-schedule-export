@@ -66,6 +66,10 @@ if (class_exists("GFForms")) {
 		 */
         public function form_settings_fields($form) {
 
+			if ( ! GFCommon::current_user_can_any( 'gravityforms_edit_forms' ) ) {
+				wp_die( 'You do not have permission to access this page' );
+			}
+
 			//collect the form id from the schedule export settings page url for the current form
 			$form_id = $_REQUEST['id'];
 			$form = apply_filters( "gform_form_export_page_{$form_id}", apply_filters( 'gform_form_export_page', $form ) );
@@ -170,6 +174,7 @@ if (class_exists("GFForms")) {
                 )
             );
             return $inputs;
+
         } //END form_settings_fields();
 
     }
@@ -199,6 +204,27 @@ if (class_exists("GFForms")) {
 	}
 
 	//TODO: Schedule the Cron Event
+	/*
+	static function activate() {
+		wp_schedule_event( time(), 'hourly', 'my_hourly_event' );
+	} // end activate
+
+	static function deactivate() {
+		wp_clear_scheduled_hook('my_hourly_event');
+	} // end activate
+
+	public function update_db_hourly() {
+
+		// 1. Check for a new file
+		// 2. If it exists, read it, upload it, delete it
+		// 3. Otherwise, do nothing
+
+	} // end update_csv_hourly
+	*/
+
 	//TODO: Review the Entries Export and add to Cron Event
+
+	//GFExport::export_lead();
+
 	//TODO: Add Message Last Schedule Run
 }
