@@ -18,7 +18,6 @@ if ( ! defined( 'WPINC' ) ) {
 if (class_exists("GFForms")) {
 
 	//Add the Gravity Fomrs Add-on Framework - http://www.gravityhelp.com/documentation/gravity-forms/extending-gravity-forms/add-on-framework/gfaddon/
-    GFForms::include_addon_framework();
 	GFForms::include_feed_addon_framework();
 
     class GFScheduledExport extends GFFeedAddOn {
@@ -98,137 +97,169 @@ if (class_exists("GFForms")) {
 				}
 			}
 
+			// Collect the inputs to print using the API
             $inputs = array(
+                // Main Settings
                 array(
-					'title' => "Scheduled Entries Export",
-					'description' => "The settings below will automatically export new entries and send them to the emails below based on the set time frame.",
+					'title' => __( "Scheduled Entries Export", $this->_slug ),
+					'description' => __( "The settings below will automatically export new entries and send them to the emails below based on the set time frame.", $this->_slug ),
 					'fields' => array(
+						// Give the schedule a name
+					    array(
+                            'name'    => 'feedName',
+                            'type'    => 'text',
+                            'class'   => 'small',
+                            'label'   => __( "Name", $this->_slug ),
+                            'tooltip' => __( "Enter a name to identify the schedule", $this->_slug )
+                        ),
 						// Set the time frame drop-down
 						array(
-                            'label'   => "Time Frame",
-                            'type'    => "select",
-                            'name'    => "time_frame",
-                            'tooltip' => "Set how frequently it the entries are exported and emailed",
+                            'name'    => 'timeFrame',
+                            'type'    => 'select',
+                            'label'   => __( "Time Frame", $this->_slug ),
+                            'tooltip' => __( "Set how frequently it the entries are exported and emailed", $this->_slug ),
                             'choices' => array(
                                 array(
-                                    'label' => "Hourly",
-                                    'value' => "hourly"
+                                    'label' => __( "Hourly", $this->_slug ),
+                                    'value' => 'hourly'
                                 ),
                                 array(
-                                    'label' => "Twice Daily",
-                                    'value' => "twicedaily"
+                                    'label' => __( "Twice Daily", $this->_slug ),
+                                    'value' => 'twicedaily'
                                 ),
                                 array(
-                                    'label' => "Daily",
-                                    'value' => "daily"
+                                    'label' => __( "Daily", $this->_slug ),
+                                    'value' => 'daily'
                                 ),
                                 array(
-                                    'label' => "Weekly",
-                                    'value' => "weekly"
+                                    'label' => __( "Weekly", $this->_slug ),
+                                    'value' => 'weekly'
                                 ),
                                 array(
-                                    'label' => "Monthly - Every 30 Days",
-                                    'value' => "monthly"
+                                    'label' => __( "Monthly", $this->_slug ),
+                                    'value' => 'monthly'
                                 )
                             )
                         ),
                         // Set the destination email for the exported files
                         array(
-							'type'          => "text",
-							'name'          => "email",
-							'label'         => "Email Address",
-							'class'         => "medium",
-							'tooltip'       => "Enter a comma separated list of emails you would like to receive the exported entries file."
-					   ),
+							'name'	  => 'email',
+							'type'	  => 'text',
+							'class'	  => 'medium',
+							'label'	  => __( "Email Address", $this->_slug ),
+							'tooltip' => __( "Enter a comma separated list of emails you would like to receive the exported entries file.", $this->_slug )
+						),
 						array(
-							'label'   => "Form Fields",
-							'type'    => "checkbox",
-							'name'    => "fields",
-							'tooltip' => "Select the fields you would like to include in the export. Caution: Make sure you are not sending any sensitive information.",
+							'name'    => 'fields',
+							'type'    => 'checkbox',
+							'label'   => __( "Form Fields", $this->_slug ),
+							'tooltip' => __( "Select the fields you would like to include in the export. Caution: Make sure you are not sending any sensitive information.", $this->_slug ),
 							'choices' => $choices
 						),
 						array(
-                            "name" => "condition",
-                            "label" => __("Condition", "simplefeedaddon"),
-                            "type" => "feed_condition",
-                            "checkbox_label" => __('Enable Condition', 'simplefeedaddon'),
-                            "instructions" => __("Process this simple feed if", "simplefeedaddon")
-                        ),
+                            'name'			 => 'condition',
+                            'type'			 => 'feed_condition',
+                            'label'			 => __( "Condition", $this->_slug ),
+							'tooltip' 		 => __( "Set conditional logic that must be met before sending the export.", $this->_slug ),
+                            'checkbox_label' => __( "Enable Condition", $this->_slug ),
+                            'instructions'	 => __( "Process this simple feed if", $this->_slug )
+                        )
                     )
                 )
             );
             return $inputs;
         } //END feed_settings_fields();
 
-        protected function feed_list_columns() {
+		/**
+		 * Set the column names on the feed list
+		 *
+		 * @since    1.0.0
+		 *
+		 */
+        public function feed_list_columns() {
             return array(
-                'feedName' => __('Name', 'simplefeedaddon'),
-                'mytextbox' => __('My Textbox', 'simplefeedaddon')
+                'feedName'  => __( "Name", $this->_slug ),
+                'timeFrame' => __( "Time Frame", $this->_slug ),
+                'email' 	=> __( "Email", $this->_slug )
             );
         }
-        // customize the value of mytextbox before it's rendered to the list
-        public function get_column_value_mytextbox($feed){
-            return "<b>" . $feed["meta"]["mytextbox"] ."</b>";
+
+        /**
+		 * Customize the value of before it's rendered to the list
+		 *
+		 * @since    1.0.0
+		 *
+
+        public function get_column_value_email($feed){
+            // return "<b>" . $feed["meta"]["email"] ."</b>";
         }
-        public function plugin_settings_fields() {
-            return array(
-                array(
-                    "title"  => "Simple Add-On Settings",
-                    "fields" => array(
-                        array(
-                            "name"    => "textbox",
-                            "tooltip" => "This is the tooltip",
-                            "label"   => "This is the label",
-                            "type"    => "text",
-                            "class"   => "small"
-                        )
-                    )
-                )
-            );
-        }
+		*/
+
+        /**
+		 * Add custom script
+		 *
+		 * @since    1.0.0
+		 *
+
         public function scripts() {
             $scripts = array(
-                array("handle"  => "my_script_js",
-                      "src"     => $this->get_base_url() . "/js/my_script.js",
-                      "version" => $this->_version,
-                      "deps"    => array("jquery"),
+                array('handle'  => 'my_script_js',
+                      'src'     => $this->get_base_url() . '/js/my_script.js',
+                      'version' => $this->_version,
+                      'deps'    => array("jquery"),
                       "strings" => array(
-                          'first'  => __("First Choice", "simplefeedaddon"),
-                          'second' => __("Second Choice", "simplefeedaddon"),
-                          'third'  => __("Third Choice", "simplefeedaddon")
+                          'first'  => __( "First Choice", $this->_slug ),
+                          'second' => __( "Second Choice", $this->_slug ),
+                          'third'  => __( "Third Choice", $this->_slug )
                       ),
-                      "enqueue" => array(
+                      'enqueue' => array(
                           array(
-                              "admin_page" => array("form_settings"),
-                              "tab"        => "simplefeedaddon"
+                              'admin_page' => array("form_settings"),
+                              'tab'        => $this->_slug
                           )
                       )
                 ),
             );
             return array_merge(parent::scripts(), $scripts);
         }
+		*/
+
+		/**
+		 * Add custom styles
+		 *
+		 * @since    1.0.0
+		 *
+
         public function styles() {
             $styles = array(
-                array("handle"  => "my_styles_css",
-                      "src"     => $this->get_base_url() . "/css/my_styles.css",
-                      "version" => $this->_version,
-                      "enqueue" => array(
-                          array("field_types" => array("poll"))
+                array('handle'  => 'my_styles_css',
+                      'src'     => $this->get_base_url() . '/css/my_styles.css',
+                      'version' => $this->_version,
+                      'enqueue' => array(
+                          array('field_types' => array("poll"))
                       )
                 )
             );
             return array_merge(parent::styles(), $styles);
         }
+		*/
+
+        /**
+		 * Process the Feed
+		 *
+		 * @since    1.0.0
+		 *
+
         public function process_feed($feed, $entry, $form){
             $feedName = $feed["meta"]["feedName"];
-            $mytextbox = $feed["meta"]["mytextbox"];
-            $checkbox = $feed["meta"]["mycheckbox"];
-            $mapped_email = $feed["meta"]["mappedFields_email"];
-            $mapped_name = $feed["meta"]["mappedFields_name"];
-            $email = $entry[$mapped_email];
-            $name = $entry[$mapped_name];
+            $timeFrame = $feed["meta"]["timeFrame"];
+            $email = $feed["meta"]["email"];
+            $fields = $feed["meta"]["fields"];
+            $condition = $feed["meta"]["condition"];
         }
+        */
     }
+
     new GFScheduledExport();
 
 	/**
@@ -244,12 +275,12 @@ if (class_exists("GFForms")) {
 	 	// Adds once weekly to the existing schedules.
 	 	$schedules['weekly'] = array(
 	 		'interval' => 604800,
-	 		'display' => __( "Weekly" )
+	 		'display' => __( "Weekly", $this->_slug )
 	 	);
 	 	// Add monthly
 	 	$schedules['monthly'] = array(
 	 		'interval' => 2592000,
-	 		'display' => __( "Monthly - Every 30 Days" )
+	 		'display' => __( "Monthly", $this->_slug )
 	 	);
 	 	return $schedules;
 	}
@@ -257,138 +288,4 @@ if (class_exists("GFForms")) {
 	//TODO: Schedule the Cron Event
 	//TODO: Review the Entries Export and add to Cron Event
 	//TODO: Add Message Last Schedule Run
-}
-
-// SAMPLE ----------------------DELET BELOW -------------------------------------
-if (class_exists("GFForms")) {
-    GFForms::include_feed_addon_framework();
-    class GFSimpleFeedAddOn extends GFFeedAddOn {
-        protected $_version = "1.0";
-        protected $_min_gravityforms_version = "1.7.9999";
-        protected $_slug = "simplefeedaddon";
-        protected $_path = "simplefeedaddon/simplefeedaddon.php";
-        protected $_full_path = __FILE__;
-        protected $_title = "Gravity Forms Simple Feed Add-On";
-        protected $_short_title = "Simple Feed Add-On";
-
-        public function feed_settings_fields() {
-            return array(
-                array(
-                    "title"  => "Simple Feed Settings",
-                    "fields" => array(
-                        array(
-                            "label"   => "Feed name",
-                            "type"    => "text",
-                            "name"    => "feedName",
-                            "tooltip" => "This is the tooltip",
-                            "class"   => "small"
-                        ),
-                        array(
-                            "label"   => "Textbox",
-                            "type"    => "text",
-                            "name"    => "mytextbox",
-                            "tooltip" => "This is the tooltip",
-                            "class"   => "small"
-                        ),
-                        array(
-                            "label"   => "My checkbox",
-                            "type"    => "checkbox",
-                            "name"    => "mycheckbox",
-                            "tooltip" => "This is the tooltip",
-                            "choices" => array(
-                                array(
-                                    "label" => "Enabled",
-                                    "name"  => "mycheckbox"
-                                )
-                            )
-                        ),
-                        array(
-                            "name" => "mappedFields",
-                            "label" => "Map Fields",
-                            "type" => "field_map",
-                            "field_map" => array(   array("name" => "email", "label" => "Email", "required" => 0),
-                                                    array("name" => "name", "label" => "Name", "required" => 0)
-                            )
-                        ),
-                        array(
-                            "name" => "condition",
-                            "label" => __("Condition", "simplefeedaddon"),
-                            "type" => "feed_condition",
-                            "checkbox_label" => __('Enable Condition', 'simplefeedaddon'),
-                            "instructions" => __("Process this simple feed if", "simplefeedaddon")
-                        ),
-                    )
-                )
-            );
-        }
-        protected function feed_list_columns() {
-            return array(
-                'feedName' => __('Name', 'simplefeedaddon'),
-                'mytextbox' => __('My Textbox', 'simplefeedaddon')
-            );
-        }
-        // customize the value of mytextbox before it's rendered to the list
-        public function get_column_value_mytextbox($feed){
-            return "<b>" . $feed["meta"]["mytextbox"] ."</b>";
-        }
-        public function plugin_settings_fields() {
-            return array(
-                array(
-                    "title"  => "Simple Add-On Settings",
-                    "fields" => array(
-                        array(
-                            "name"    => "textbox",
-                            "tooltip" => "This is the tooltip",
-                            "label"   => "This is the label",
-                            "type"    => "text",
-                            "class"   => "small"
-                        )
-                    )
-                )
-            );
-        }
-        public function scripts() {
-            $scripts = array(
-                array("handle"  => "my_script_js",
-                      "src"     => $this->get_base_url() . "/js/my_script.js",
-                      "version" => $this->_version,
-                      "deps"    => array("jquery"),
-                      "strings" => array(
-                          'first'  => __("First Choice", "simplefeedaddon"),
-                          'second' => __("Second Choice", "simplefeedaddon"),
-                          'third'  => __("Third Choice", "simplefeedaddon")
-                      ),
-                      "enqueue" => array(
-                          array(
-                              "admin_page" => array("form_settings"),
-                              "tab"        => "simplefeedaddon"
-                          )
-                      )
-                ),
-            );
-            return array_merge(parent::scripts(), $scripts);
-        }
-        public function styles() {
-            $styles = array(
-                array("handle"  => "my_styles_css",
-                      "src"     => $this->get_base_url() . "/css/my_styles.css",
-                      "version" => $this->_version,
-                      "enqueue" => array(
-                          array("field_types" => array("poll"))
-                      )
-                )
-            );
-            return array_merge(parent::styles(), $styles);
-        }
-        public function process_feed($feed, $entry, $form){
-            $feedName = $feed["meta"]["feedName"];
-            $mytextbox = $feed["meta"]["mytextbox"];
-            $checkbox = $feed["meta"]["mycheckbox"];
-            $mapped_email = $feed["meta"]["mappedFields_email"];
-            $mapped_name = $feed["meta"]["mappedFields_name"];
-            $email = $entry[$mapped_email];
-            $name = $entry[$mapped_name];
-        }
-    }
-    new GFSimpleFeedAddOn();
 }
