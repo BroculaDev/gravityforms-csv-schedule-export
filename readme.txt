@@ -17,7 +17,7 @@ This plugin allows you to set forms to export entries to a .CSV file and send th
 Options:
 
 *   Activate/Deactivate a schedule on a form by form basis
-*   Set how frequently it the entries are exported and emailed. Hourly, Twice a Day, Daily, Weekly, Monthly - Every 30 Days.
+*   Set how frequently it the entries are exported and emailed. Hourly, Twice a Day, Daily, Weekly.
 *   Set one or multiple emails to receive a copy of the export.
 
 TODO: mention WordPress cron

@@ -44,6 +44,7 @@ if (class_exists("GFForms")) {
         public function init_admin(){
             parent::init_admin();
             // add tasks or filters here that you want to perform only in admin
+            add_action( 'gform_after_save_form', array( &$this, 'log_form_saved' ), 10, 2 );
         }
 
         public function init_frontend(){
@@ -56,6 +57,82 @@ if (class_exists("GFForms")) {
             // add tasks or filters here that you want to perform only during ajax requests
         }
 
+
+		/**
+		 * Add a custom inputs for the field used on the form.
+		 *
+		 * TODO: Update the field name to get the name from the custom field settings
+		 *
+		 * @since    1.0.0
+		 *
+		 */
+		public function settings_export_form_feilds(){
+
+			//collect the form id from the schedule export settings page url for the current form
+			$form_id = $_REQUEST['id'];
+			$form = RGFormsModel::get_form_meta( $form_id );
+
+			//collect an array the saved field settings
+			$saved_settings = GFAddOn::get_setting( 'export_field' );
+
+			//apply filter
+			$form = apply_filters( "gform_form_export_page_{$form_id}", apply_filters( 'gform_form_export_page', $form ) );
+
+			//collect and add the default export fields
+			$form = GFExport::add_default_export_fields( $form );
+
+			//loop through the fields and format all the inputs in to an array to be rendered as checkboxes
+			if ( is_array( $form['fields'] ) ) {
+				foreach ( $form['fields'] as $field ) {
+					$inputs = $field->get_entry_inputs();
+					if ( is_array( $inputs ) ) {
+						foreach ( $inputs as $input ) {
+							$choices[] = array(
+								'label' => GFCommon::get_label( $field, $input['id'] ),
+								'value' => $input['id'],
+								'name' => 'export_field[]'
+							);
+						}
+					} else if ( ! $field->displayOnly ) {
+						$choices[] = array(
+							'label' => GFCommon::get_label( $field ),
+							'value' => $field->id,
+							'name' => 'export_field[]'
+						);
+					}
+				}
+			}
+
+			//loop variables
+			$field_name = "export_field";
+			$choice_count = 0;
+
+		    ?>
+			<ul id="export_field_list">
+				<li>
+					<input id="select_all" type="checkbox" onclick="jQuery('.gform_export_field').attr('checked', this.checked); jQuery('#gform_export_check_all').html(this.checked ? '<strong>Deselect All</strong>' : '<strong>Select All</strong>'); ">
+					<label id="gform_export_check_all" for="select_all"><strong>Select All</strong></label>
+				</li>
+			<?php
+
+				//loop through and output the choices
+				foreach ( $choices as $choice ){
+
+					$field_id = $field_name . '_' . $choice_count;
+					$checked = in_array( $choice['value'], $saved_settings )  ? ' checked="checked"' : '';
+
+					echo '<li>';
+					echo '<input type="checkbox"'. $checked .' id="'. $field_id .'" name="_gaddon_setting_'. $choice['name'] .'" value="'. $choice['value'] .'" class="gform_'. $field_name .'">';
+					echo '<label for="'. $field_id .'">'. $choice['label'] .'</label>';
+					echo '</li>';
+
+					$choice_count++;
+				}
+			?>
+			</ul>
+		    <?php
+		}
+
 		/**
 		 * Add form settings page with schedule export options.
 		 *
@@ -65,38 +142,6 @@ if (class_exists("GFForms")) {
 		 *
 		 */
 		 public function feed_settings_fields() {
-
-            //collect the form id from the schedule export settings page url for the current form
-			$form_id = $_REQUEST['id'];
-			$form = GFAPI::get_form( $form_id ); // Get the form obj
-			$form = apply_filters( "gform_form_export_page_{$form_id}", apply_filters( 'gform_form_export_page', $form ) );
-
-			//collect filter settings TODO: these are currently not used.
-			//$filter_settings      = GFCommon::get_field_filter_settings( $form );
-			//$filter_settings_json = json_encode( $filter_settings );
-
-			//collect and add the default export fields
-			$form = GFExport::add_default_export_fields( $form );
-			$form_fields = $form['fields'];
-
-			//loop through the fields and format all the inputs in to an array to be rendered as checkboxes
-			foreach($form_fields as $field) {
-				$inputs = $field->get_entry_inputs();
-				if ( is_array( $inputs ) ) {
-					foreach ( $inputs as $input ) {
-						$choices[] = array(
-							'label' => GFCommon::get_label( $field, $input['id'] ),
-							'name' => $input['id'],
-						);
-					}
-				} else if ( ! $field->displayOnly ) {
-					$choices[] = array(
-						'label' => GFCommon::get_label( $field ),
-						'name' => $field->id,
-					);
-				}
-			}
-
 			// Collect the inputs to print using the API
             $inputs = array(
                 // Main Settings
@@ -106,7 +151,7 @@ if (class_exists("GFForms")) {
 					'fields' => array(
 						// Give the schedule a name
 					    array(
-                            'name'    => 'feedName',
+                            'name'    => 'export_feed_name',
                             'type'    => 'text',
                             'class'   => 'small',
                             'label'   => __( "Name", $this->_slug ),
@@ -114,7 +159,7 @@ if (class_exists("GFForms")) {
                         ),
 						// Set the time frame drop-down
 						array(
-                            'name'    => 'timeFrame',
+                            'name'    => 'export_schedule',
                             'type'    => 'select',
                             'label'   => __( "Time Frame", $this->_slug ),
                             'tooltip' => __( "Set how frequently it the entries are exported and emailed", $this->_slug ),
@@ -134,28 +179,24 @@ if (class_exists("GFForms")) {
                                 array(
                                     'label' => __( "Weekly", $this->_slug ),
                                     'value' => 'weekly'
-                                ),
-                                array(
-                                    'label' => __( "Monthly", $this->_slug ),
-                                    'value' => 'monthly'
                                 )
                             )
                         ),
                         // Set the destination email for the exported files
                         array(
-							'name'	  => 'email',
+							'name'	  => 'receive_email',
 							'type'	  => 'text',
 							'class'	  => 'medium',
 							'label'	  => __( "Email Address", $this->_slug ),
 							'tooltip' => __( "Enter a comma separated list of emails you would like to receive the exported entries file.", $this->_slug )
 						),
-						array(
-							'name'    => 'fields',
-							'type'    => 'checkbox',
-							'label'   => __( "Form Fields", $this->_slug ),
-							'tooltip' => __( "Select the fields you would like to include in the export. Caution: Make sure you are not sending any sensitive information.", $this->_slug ),
-							'choices' => $choices
-						),
+						 array(
+		                    'label'   => "Form Fields",
+		                    'type'    => "export_form_feilds",
+		                    'name'    => "export_field",
+		                    'tooltip' => "Select the fields you would like to include in the export. Caution: Make sure you are not sending any sensitive information."
+
+		                ),
 						array(
                             'name'			 => 'condition',
                             'type'			 => 'feed_condition',
@@ -168,7 +209,7 @@ if (class_exists("GFForms")) {
                 )
             );
             return $inputs;
-        } //END feed_settings_fields();
+        }
 
 		/**
 		 * Set the column names on the feed list
@@ -177,9 +218,10 @@ if (class_exists("GFForms")) {
 		 *
 		 */
         public function feed_list_columns() {
+
             return array(
-                'feedName'  => __( "Name", $this->_slug ),
-                'timeFrame' => __( "Time Frame", $this->_slug ),
+                'export_feed_name'  => __( "Name", $this->_slug ),
+                'export_schedule' => __( "Time Frame", $this->_slug ),
                 'email' 	=> __( "Email", $this->_slug )
             );
         }
@@ -195,74 +237,54 @@ if (class_exists("GFForms")) {
         }
 		*/
 
-        /**
-		 * Add custom script
-		 *
-		 * @since    1.0.0
-		 *
+		//public function process_feed($feed, $entry, $form){
+            //$feedName = $feed["meta"]["feedName"];
+            //$timeFrame = $feed["meta"]["timeFrame"];
+            //$email = $feed["meta"]["email"];
+            //$fields = $feed["meta"]["fields"];
+        //}
 
-        public function scripts() {
-            $scripts = array(
-                array('handle'  => 'my_script_js',
-                      'src'     => $this->get_base_url() . '/js/my_script.js',
-                      'version' => $this->_version,
-                      'deps'    => array("jquery"),
-                      "strings" => array(
-                          'first'  => __( "First Choice", $this->_slug ),
-                          'second' => __( "Second Choice", $this->_slug ),
-                          'third'  => __( "Third Choice", $this->_slug )
-                      ),
-                      'enqueue' => array(
-                          array(
-                              'admin_page' => array("form_settings"),
-                              'tab'        => $this->_slug
-                          )
-                      )
-                ),
-            );
-            return array_merge(parent::scripts(), $scripts);
-        }
-		*/
 
 		/**
-		 * Add custom styles
+		 * Fire on saving the feed settings
+		 *
+		 * TODO: finish mapping fields
+		 * TODO: add csv file header
 		 *
 		 * @since    1.0.0
 		 *
+		 */
+		function save_feed_settings( $feed_id, $form_id, $settings ) {
 
-        public function styles() {
-            $styles = array(
-                array('handle'  => 'my_styles_css',
-                      'src'     => $this->get_base_url() . '/css/my_styles.css',
-                      'version' => $this->_version,
-                      'enqueue' => array(
-                          array('field_types' => array("poll"))
-                      )
-                )
-            );
-            return array_merge(parent::styles(), $styles);
-        }
-		*/
+			if ( $feed_id ) {
+				$this->update_feed_meta( $feed_id, $settings );
+				$result = $feed_id;
+			} else {
+				$result = $this->insert_feed( $form_id, true, $settings );
+			}
 
-        /**
-		 * Process the Feed
-		 *
-		 * @since    1.0.0
-		 *
 
-        public function process_feed($feed, $entry, $form){
-            $feedName = $feed["meta"]["feedName"];
-            $timeFrame = $feed["meta"]["timeFrame"];
-            $email = $feed["meta"]["email"];
-            $fields = $feed["meta"]["fields"];
-            $condition = $feed["meta"]["condition"];
-        }
-        */
-    }
+			//map the fields for the start_export() function
+			$_POST['export_field'] = $_POST['_gaddon_setting_export_field'];
+
+			$form = RGFormsModel::get_form_meta( $form_id );
+			echo "<pre>";
+			var_dump($_POST['export_field']);
+			echo "</pre>";
+
+			GFExport::start_export( $form );
+
+			//For Testing
+			//do_action( 'gform_post_export_entries', $form, $start_date, $end_date, $fields );
+
+			return $result;
+		}
+
+	}
 
     new GFScheduledExport();
 
-	/**
+	/** TODO: Use alternative to that it can be sent at the first of the Week/Month
 	 * Add time frame options to the cron schedule
 	 *
 	 * TODO: Check if this should be in the class and if show where it should init?
@@ -270,22 +292,14 @@ if (class_exists("GFForms")) {
 	 * @reference https://codex.wordpress.org/Function_Reference/wp_get_schedules
 	 * @since    1.0.0
 	 */
-	add_filter( 'cron_schedules', 'scheduled_export_cron_add_times' );
+	// add_filter( 'cron_schedules', 'scheduled_export_cron_add_times' );
 	function scheduled_export_cron_add_times( $schedules ) {
 	 	// Adds once weekly to the existing schedules.
 	 	$schedules['weekly'] = array(
 	 		'interval' => 604800,
-	 		'display' => __( "Weekly", $this->_slug )
-	 	);
-	 	// Add monthly
-	 	$schedules['monthly'] = array(
-	 		'interval' => 2592000,
-	 		'display' => __( "Monthly", $this->_slug )
+	 		'display' => __( "Weekly" )
 	 	);
 	 	return $schedules;
 	}
 
-	//TODO: Schedule the Cron Event
-	//TODO: Review the Entries Export and add to Cron Event
-	//TODO: Add Message Last Schedule Run
 }
