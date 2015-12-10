@@ -268,10 +268,22 @@ if (class_exists("GFForms")) {
 			$_POST['export_field'] = $_POST['_gaddon_setting_export_field'];
 
 			$form = RGFormsModel::get_form_meta( $form_id );
-			echo "<pre>";
-			var_dump($_POST['export_field']);
-			echo "</pre>";
 
+			//echo "<pre>";
+			//var_dump($_POST['export_field']);
+			//echo "</pre>";
+
+			//check_admin_referer( 'rg_start_export', 'rg_start_export_nonce' );
+
+			$filename = sanitize_title_with_dashes( $form['title'] ) . '-' . gmdate( 'Y-m-d', GFCommon::get_local_timestamp( time() ) ) . '.csv';
+			$charset  = get_option( 'blog_charset' );
+			header( 'Content-Description: File Transfer' );
+			header( "Content-Disposition: attachment; filename=$filename" );
+			header( 'Content-Type: text/csv; charset=' . $charset, true );
+			$buffer_length = ob_get_length(); //length or false if no buffer
+			if ( $buffer_length > 1 ) {
+				ob_clean();
+			}
 			GFExport::start_export( $form );
 
 			//For Testing
