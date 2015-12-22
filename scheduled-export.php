@@ -14,6 +14,33 @@ if ( ! defined( 'WPINC' ) ) {
 	die;
 }
 
+/**
+ * The code that runs during plugin activation.
+ *
+ * @since    1.0.0
+ */
+function activate_gfscheduledexport() {
+	//TODO:reschedule any saved feed in cron
+}
+register_activation_hook( __FILE__, 'activate_gfscheduledexport' );
+
+/**
+ * The code that runs during plugin deactivation.
+ *
+ * @since    1.0.0
+ */
+function deactivate_gfscheduledexport() {
+	//TODO: clear cron jobs
+}
+
+/*
+ * The Add-On Framework handles much of the uninstall for the class unless custom settings or database tables where added.
+ * https://www.gravityhelp.com/documentation/article/gfaddon/#uninstalling
+ */
+
+register_deactivation_hook( __FILE__, 'deactivate_gfscheduledexport' );
+
+
 //Make sure that gravity forms in installed and active
 if (class_exists("GFForms")) {
 
@@ -165,6 +192,10 @@ if (class_exists("GFForms")) {
                             'tooltip' => __( "Set how frequently it the entries are exported and emailed", $this->_slug ),
                             'choices' => array(
                                 array(
+                                    'label' => __( "Every 2 min for testing", $this->_slug ),
+                                    'value' => 'mins'
+                                ),
+                                array(
                                     'label' => __( "Hourly", $this->_slug ),
                                     'value' => 'hourly'
                                 ),
@@ -275,26 +306,39 @@ if (class_exists("GFForms")) {
 
 			//check_admin_referer( 'rg_start_export', 'rg_start_export_nonce' );
 
-			$filename = sanitize_title_with_dashes( $form['title'] ) . '-' . gmdate( 'Y-m-d', GFCommon::get_local_timestamp( time() ) ) . '.csv';
-			$charset  = get_option( 'blog_charset' );
-			header( 'Content-Description: File Transfer' );
-			header( "Content-Disposition: attachment; filename=$filename" );
-			header( 'Content-Type: text/csv; charset=' . $charset, true );
-			$buffer_length = ob_get_length(); //length or false if no buffer
-			if ( $buffer_length > 1 ) {
-				ob_clean();
-			}
-			GFExport::start_export( $form );
-
 			//For Testing
 			//do_action( 'gform_post_export_entries', $form, $start_date, $end_date, $fields );
 
 			return $result;
 		}
 
+		function set_cron_gfscheduledexport( $feed, $time_frame ) {
+
+		if( !wp_next_scheduled( 'gfscheduledexport_cron_hook' ) ) {
+		    wp_schedule_event( time(), $time_frame, 'gfscheduledexport_cron_hook' );
+		}
 	}
 
+
+	} // END GFScheduledExport Class
+
     new GFScheduledExport();
+
+    function create_csv( $form ) {
+
+		$filename = sanitize_title_with_dashes( $form['title'] ) . '-' . gmdate( 'Y-m-d', GFCommon::get_local_timestamp( time() ) ) . '.csv';
+		$charset  = get_option( 'blog_charset' );
+		header( 'Content-Description: File Transfer' );
+		header( "Content-Disposition: attachment; filename=$filename" );
+		header( 'Content-Type: text/csv; charset=' . $charset, true );
+		$buffer_length = ob_get_length(); //length or false if no buffer
+		if ( $buffer_length > 1 ) {
+			ob_clean();
+		}
+
+		GFExport::start_export( $form );
+
+	}
 
 	/** TODO: Use alternative to that it can be sent at the first of the Week/Month
 	 * Add time frame options to the cron schedule
