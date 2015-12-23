@@ -91,7 +91,6 @@ if (class_exists("GFForms")) {
 		 * TODO: Update the field name to get the name from the custom field settings
 		 *
 		 * @since    1.0.0
-		 *
 		 */
 		public function settings_export_form_feilds(){
 
@@ -166,9 +165,12 @@ if (class_exists("GFForms")) {
 		 * TODO: Add default email address - admin email if empty?
 		 *
 		 * @since    1.0.0
-		 *
 		 */
-		 public function feed_settings_fields() {
+		public function feed_settings_fields() {
+
+			// Collect the form id from the schedule export settings page url for the current form
+			$form_id = $_REQUEST['id'];
+
 			// Collect the inputs to print using the API
             $inputs = array(
                 // Main Settings
@@ -235,6 +237,12 @@ if (class_exists("GFForms")) {
 							'tooltip' 		 => __( "Set conditional logic that must be met before sending the export.", $this->_slug ),
                             'checkbox_label' => __( "Enable Condition", $this->_slug ),
                             'instructions'	 => __( "Process this simple feed if", $this->_slug )
+                        ),
+                        array(
+							'type'          => 'hidden',
+							'name'          => 'export_form',
+							'label'         => 'Export Form',
+							'default_value' => $form_id,
                         )
                     )
                 )
@@ -246,7 +254,6 @@ if (class_exists("GFForms")) {
 		 * Set the column names on the feed list
 		 *
 		 * @since    1.0.0
-		 *
 		 */
         public function feed_list_columns() {
 
@@ -275,17 +282,12 @@ if (class_exists("GFForms")) {
             //$fields = $feed["meta"]["fields"];
         //}
 
-
 		/**
 		 * Fire on saving the feed settings
 		 *
-		 * TODO: finish mapping fields
-		 * TODO: add csv file header
-		 *
 		 * @since    1.0.0
-		 *
 		 */
-		function save_feed_settings( $feed_id, $form_id, $settings ) {
+		public function save_feed_settings( $feed_id, $form_id, $settings ) {
 
 			if ( $feed_id ) {
 				$this->update_feed_meta( $feed_id, $settings );
@@ -294,51 +296,71 @@ if (class_exists("GFForms")) {
 				$result = $this->insert_feed( $form_id, true, $settings );
 			}
 
-
-			//map the fields for the start_export() function
-			$_POST['export_field'] = $_POST['_gaddon_setting_export_field'];
-
-			$form = RGFormsModel::get_form_meta( $form_id );
-
-			//echo "<pre>";
-			//var_dump($_POST['export_field']);
-			//echo "</pre>";
-
+			//TODO: Admin Nonce
 			//check_admin_referer( 'rg_start_export', 'rg_start_export_nonce' );
 
-			//For Testing
-			//do_action( 'gform_post_export_entries', $form, $start_date, $end_date, $fields );
+			//set_cron_gfscheduledexport( $feed_id, $settings['export_schedule'] );
+
+			//$getstuff = parent::get_feed($feed_id);
+
+			echo "<pre>";
+			var_dump($settings);
+			echo "</pre>";
 
 			return $result;
 		}
 
-		function set_cron_gfscheduledexport( $feed, $time_frame ) {
+		/**
+		 * Schedules the export
+		 *
+		 * @since    1.0.0
+		 */
+		public function set_cron_gfscheduledexport( $feed_id, $time_frame ) {
 
-		if( !wp_next_scheduled( 'gfscheduledexport_cron_hook' ) ) {
-		    wp_schedule_event( time(), $time_frame, 'gfscheduledexport_cron_hook' );
+			if( !wp_next_scheduled( 'gfscheduledexport_cron_job' ) ) {
+			    wp_schedule_event( time(), $time_frame, 'gfscheduledexport_cron_job', $feed_id );
+			}
 		}
-	}
 
+		/**
+		 * Fire on the cron job and runs the email
+		 *
+		 * @since    1.0.0
+		 */
+		public function gfscheduledexport_cron_job( $feed_id ) {
+
+			$_POST['export_lead'] = "Download Export File";
+
+			GFExport::maybe_export();
+
+		}
+
+		/**
+		 * Create the CSV to attach to the email
+		 *
+		 * @since    1.0.0
+		 */
+	    function create_csv( $form ) {
+
+			$form = RGFormsModel::get_form_meta( $form_id );
+
+			$filename = sanitize_title_with_dashes( $form['title'] ) . '-' . gmdate( 'Y-m-d', GFCommon::get_local_timestamp( time() ) ) . '.csv';
+			$charset  = get_option( 'blog_charset' );
+			header( 'Content-Description: File Transfer' );
+			header( "Content-Disposition: attachment; filename=$filename" );
+			header( 'Content-Type: text/csv; charset=' . $charset, true );
+			$buffer_length = ob_get_length(); //length or false if no buffer
+			if ( $buffer_length > 1 ) {
+				ob_clean();
+			}
+
+			GFExport::start_export( $form );
+
+		}
 
 	} // END GFScheduledExport Class
 
     new GFScheduledExport();
-
-    function create_csv( $form ) {
-
-		$filename = sanitize_title_with_dashes( $form['title'] ) . '-' . gmdate( 'Y-m-d', GFCommon::get_local_timestamp( time() ) ) . '.csv';
-		$charset  = get_option( 'blog_charset' );
-		header( 'Content-Description: File Transfer' );
-		header( "Content-Disposition: attachment; filename=$filename" );
-		header( 'Content-Type: text/csv; charset=' . $charset, true );
-		$buffer_length = ob_get_length(); //length or false if no buffer
-		if ( $buffer_length > 1 ) {
-			ob_clean();
-		}
-
-		GFExport::start_export( $form );
-
-	}
 
 	/** TODO: Use alternative to that it can be sent at the first of the Week/Month
 	 * Add time frame options to the cron schedule
@@ -354,6 +376,11 @@ if (class_exists("GFForms")) {
 	 	$schedules['weekly'] = array(
 	 		'interval' => 604800,
 	 		'display' => __( "Weekly" )
+	 	);
+	 	// Adds once weekly to the existing schedules.
+	 	$schedules['mins'] = array(
+	 		'interval' => 120,
+	 		'display' => __( "2 Minutes" )
 	 	);
 	 	return $schedules;
 	}
