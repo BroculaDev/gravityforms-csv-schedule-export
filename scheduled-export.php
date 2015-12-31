@@ -214,14 +214,23 @@ if ( class_exists( 'GFForms' ) ) {
 								)
 							)
 						),
-						// Set the destination email for the exported files.
+						// Set the to email address.
 						array(
-						   'name'	  => 'receive_email',
+						   'name'	  => 'to_email',
 						   'type'	  => 'text',
 						   'class'	  => 'medium',
-						   'label'	  => __("Email Address", $this->_slug),
-						   'tooltip' => __("Enter a comma separated list of emails you would like to receive the exported entries file.", $this->_slug)
+						   'label'	  => __("To Email Addresses", $this->_slug),
+						   'tooltip' => __("Enter a comma separated list of email addresses you would like to receive the exported entries file.", $this->_slug)
 						),
+						// Set the from email address.
+						array(
+						   'name'	  => 'from_email',
+						   'type'	  => 'text',
+						   'class'	  => 'medium',
+						   'label'	  => __("From Email Address", $this->_slug),
+						   'tooltip' => __("Enter the email address you would like the exported entries file sent from.", $this->_slug)
+						),
+						// Custom field to set the form fields to export.
 						array(
 							'label'   => "Form Fields",
 							'type'	=> "export_form_feilds",
@@ -229,6 +238,7 @@ if ( class_exists( 'GFForms' ) ) {
 							'tooltip' => "Select the fields you would like to include in the export. Caution: Make sure you are not sending any sensitive information."
 
 						),
+						// Set conditional logic.
 						array(
 							'name'			 => 'condition',
 							'type'			 => 'feed_condition',
@@ -237,12 +247,6 @@ if ( class_exists( 'GFForms' ) ) {
 							'checkbox_label' => __("Enable Condition", $this->_slug),
 							'instructions'	 => __("Process this simple feed if", $this->_slug)
 						),
-						array(
-							'type'		  => 'hidden',
-							'name'		  => 'export_form',
-							'label'		 => 'Export Form',
-							'default_value' => $form_id,
-						)
 					)
 				)
 			);
@@ -319,8 +323,8 @@ if ( class_exists( 'GFForms' ) ) {
 		 */
 		public function set_cron_gfscheduledexport( $feed_id, $time_frame ) {
 
-			if(!wp_next_scheduled('gfscheduledexport_cron_job') ) {
-				wp_schedule_event(time(), $time_frame, 'gfscheduledexport_cron_job', $feed_id);
+			if( ! wp_next_scheduled( 'gfscheduledexport_cron_job' ) ) {
+				wp_schedule_event( time(), $time_frame, 'gfscheduledexport_cron_job', $feed_id );
 			}
 		}
 
@@ -329,18 +333,7 @@ if ( class_exists( 'GFForms' ) ) {
 		 *
 		 * @since 1.0.0
 		 */
-		public function gfscheduledexport_cron_job( $feed_id, $form_id ) {
-
-			self::build_csv( $feed_id );
-
-		}
-
-		/**
-		 * Create the CSV to attach to the email
-		 *
-		 * @since 1.0.0
-		 */
-		public function build_csv( $feed_id ) {
+		public function gfscheduledexport_cron_job( $feed_id ) {
 
 			// Get the feed setting an load them into the $_POST var to us the start_export() filter.
 			$_POST = null;
@@ -350,18 +343,25 @@ if ( class_exists( 'GFForms' ) ) {
 			}
 
 			// Call and collect the CSV data.
+			$form = RGFormsModel::get_form_meta( $feed_data['form_id'] );
 			ob_start();
 			GFExport::start_export( $form );
 			$data = ob_get_clean();
 
 			// Load the CSV data into a file.
 			$name_prefix = sanitize_title_with_dashes( $feed_data['meta']['export_feed_name'] ) . '-' . gmdate( 'Y-m-d', GFCommon::get_local_timestamp( time() ) ) . '_';
-			$filename = tempnam(sys_get_temp_dir(), $name_prefix);
-			$file_test = file_put_contents( $filename . '.csv' , $data );
+			$filename = tempnam( sys_get_temp_dir(), $name_prefix ) . '.csv';
+			$attachment = file_put_contents( $filename , $data );
 
-			var_dump( $file_test );
-			var_dump( $filename);
+			// Send the email and attachment.
+			$to_email = $feed_data['meta']['to_email']
+			$to_email = $feed_data['meta']['from_email']
+			//wp_mail( $feed_data['meta']['to_email'] );
 
+			// Delete the temp CSV file.
+			//@unlink( $filename );
+
+			var_dump( $feed_data );
 		}
 
 	} // END GFScheduledExport Class.
