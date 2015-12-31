@@ -349,18 +349,18 @@ if ( class_exists( 'GFForms' ) ) {
 				$_POST["$key"] = $value;
 			}
 
-			// Collect the form meta and create the file name.
-			$filename = sanitize_title_with_dashes( $feed_data['meta']['export_feed_name'] ) . '-' . gmdate( 'Y-m-d', GFCommon::get_local_timestamp( time() ) ) . '.csv';
-
 			// Call and collect the CSV data.
 			ob_start();
 			GFExport::start_export( $form );
 			$data = ob_get_clean();
 
 			// Load the CSV data into a file.
-			$test = file_put_contents( $filename, $data );
+			$name_prefix = sanitize_title_with_dashes( $feed_data['meta']['export_feed_name'] ) . '-' . gmdate( 'Y-m-d', GFCommon::get_local_timestamp( time() ) ) . '_';
+			$filename = tempnam(sys_get_temp_dir(), $name_prefix);
+			$file_test = file_put_contents( $filename . '.csv' , $data );
 
-			var_dump($test);
+			var_dump( $file_test );
+			var_dump( $filename);
 
 		}
 
