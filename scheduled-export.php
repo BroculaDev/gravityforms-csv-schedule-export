@@ -331,7 +331,7 @@ if ( class_exists( 'GFForms' ) ) {
 		 */
 		public function gfscheduledexport_cron_job( $feed_id, $form_id ) {
 
-			self::build_csv( $form_id );
+			self::build_csv( $feed_id );
 
 		}
 
@@ -340,7 +340,7 @@ if ( class_exists( 'GFForms' ) ) {
 		 *
 		 * @since 1.0.0
 		 */
-		public function build_csv( $form_id ) {
+		public function build_csv( $feed_id ) {
 
 			// Get the feed setting an load them into the $_POST var to us the start_export() filter.
 			$_POST = null;
@@ -349,21 +349,18 @@ if ( class_exists( 'GFForms' ) ) {
 				$_POST["$key"] = $value;
 			}
 
-			$form = RGFormsModel::get_form_meta( $form_id );
+			// Collect the form meta and create the file name.
+			$filename = sanitize_title_with_dashes( $feed_data['meta']['export_feed_name'] ) . '-' . gmdate( 'Y-m-d', GFCommon::get_local_timestamp( time() ) ) . '.csv';
 
-			$filename = sanitize_title_with_dashes( $form['title'] ) . '-' . gmdate( 'Y-m-d', GFCommon::get_local_timestamp( time() ) ) . '.csv';
-			$charset  = get_option( 'blog_charset' );
-
-			header( 'Content-Description: File Transfer' );
-			header( "Content-Disposition: attachment; filename=$filename" );
-			header( 'Content-Type: text/csv; charset=' . $charset, true );
-
-			$buffer_length = ob_get_length(); //length or false if no buffer
-			if ( $buffer_length > 1 ) {
-				ob_clean();
-			}
-
+			// Call and collect the CSV data.
+			ob_start();
 			GFExport::start_export( $form );
+			$data = ob_get_clean();
+
+			// Load the CSV data into a file.
+			$test = file_put_contents( $filename, $data );
+
+			var_dump($test);
 
 		}
 
