@@ -10,7 +10,7 @@
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Domain Path: /languages
  * Text Domain: gfscheduledexport
- * PHP version 5
+ * PHP version 5.6.16
  */
 
 // If this file is called directly, abort.
@@ -88,8 +88,6 @@ if ( class_exists( 'GFForms' ) ) {
 
 		/**
 		 * Add a custom inputs for the field used on the form.
-		 *
-		 * TODO: Update the field name to get the name from the custom field settings
 		 *
 		 * @since 1.0.0
 		 */
@@ -290,6 +288,7 @@ if ( class_exists( 'GFForms' ) ) {
 		 */
 		public function save_feed_settings( $feed_id, $form_id, $settings ) {
 
+			// Save the feed settings to the database.
 			if ($feed_id ) {
 				$this->update_feed_meta( $feed_id, $settings );
 				$result = $feed_id;
@@ -305,10 +304,10 @@ if ( class_exists( 'GFForms' ) ) {
 			//$getstuff = parent::get_feed($feed_id);
 
 			//echo "<pre>";
-			//var_dump($getstuff);
+			//var_dump($_POST);
 			//echo "</pre>";
 
-			$this->gfscheduledexport_cron_job( $feed_id );
+			self::gfscheduledexport_cron_job( $feed_id, $form_id );
 
 			return $result;
 		}
@@ -330,16 +329,9 @@ if ( class_exists( 'GFForms' ) ) {
 		 *
 		 * @since 1.0.0
 		 */
-		public function gfscheduledexport_cron_job( $feed_id ) {
+		public function gfscheduledexport_cron_job( $feed_id, $form_id ) {
 
-			$feed_meta = parent::get_feed( $feed_id );
-
-			foreach( $feed_meta as $key => $value ) {
-				$_POST["$key"] = $value;
-			}
-			$_POST['export_lead'] = "Download Export File";
-
-			GFExport::maybe_export();
+			self::build_csv( $form_id );
 
 		}
 
@@ -348,21 +340,30 @@ if ( class_exists( 'GFForms' ) ) {
 		 *
 		 * @since 1.0.0
 		 */
-		function create_csv( $form ) {
+		public function build_csv( $form_id ) {
+
+			// Get the feed setting an load them into the $_POST var to us the start_export() filter.
+			$_POST = null;
+			$feed_data = parent::get_feed( $feed_id );
+			foreach( $feed_data['meta'] as $key => $value ) {
+				$_POST["$key"] = $value;
+			}
 
 			$form = RGFormsModel::get_form_meta( $form_id );
 
-			$filename = sanitize_title_with_dashes($form['title']) . '-' . gmdate('Y-m-d', GFCommon::get_local_timestamp(time())) . '.csv';
-			$charset  = get_option('blog_charset');
-			header('Content-Description: File Transfer');
-			header("Content-Disposition: attachment; filename=$filename");
-			header('Content-Type: text/csv; charset=' . $charset, true);
+			$filename = sanitize_title_with_dashes( $form['title'] ) . '-' . gmdate( 'Y-m-d', GFCommon::get_local_timestamp( time() ) ) . '.csv';
+			$charset  = get_option( 'blog_charset' );
+
+			header( 'Content-Description: File Transfer' );
+			header( "Content-Disposition: attachment; filename=$filename" );
+			header( 'Content-Type: text/csv; charset=' . $charset, true );
+
 			$buffer_length = ob_get_length(); //length or false if no buffer
-			if ($buffer_length > 1 ) {
+			if ( $buffer_length > 1 ) {
 				ob_clean();
 			}
 
-			GFExport::start_export($form);
+			GFExport::start_export( $form );
 
 		}
 
@@ -377,7 +378,7 @@ if ( class_exists( 'GFForms' ) ) {
 	 * TODO: Check if this should be in the class and if show where it should init?
 	 *
 	 * @reference https://codex.wordpress.org/Function_Reference/wp_get_schedules
-	 * @since	 1.0.0
+	 * @since 1.0.0
 	 * @param array $schedules
 	 */
 	function scheduled_export_cron_add_times( $schedules ) {
