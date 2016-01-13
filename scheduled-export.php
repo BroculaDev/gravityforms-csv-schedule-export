@@ -216,7 +216,7 @@ if ( class_exists( 'GFForms' ) ) {
 						),
 						// Set the to email address.
 						array(
-						   'name'	  => 'to_email',
+						   'name'	  => 'export_email_to',
 						   'type'	  => 'text',
 						   'class'	  => 'medium',
 						   'label'	  => __("To Email Addresses", $this->_slug),
@@ -224,11 +224,27 @@ if ( class_exists( 'GFForms' ) ) {
 						),
 						// Set the from email address.
 						array(
-						   'name'	  => 'from_email',
+						   'name'	  => 'export_email_from',
 						   'type'	  => 'text',
 						   'class'	  => 'medium',
 						   'label'	  => __("From Email Address", $this->_slug),
 						   'tooltip' => __("Enter the email address you would like the exported entries file sent from.", $this->_slug)
+						),
+						// Set the from email address.
+						array(
+						   'name'	  => 'export_email_subject',
+						   'type'	  => 'text',
+						   'class'	  => 'medium',
+						   'label'	  => __("Email Subject", $this->_slug),
+						   'tooltip' => __("Enter a subject for the export email.", $this->_slug)
+						),
+						// Set the email message.
+						array(
+						   'name'	  => 'export_email_message',
+						   'type'	  => 'textarea',
+						   'class'	  => 'medium',
+						   'label'	  => __("Message", $this->_slug),
+						   'tooltip' => __("Enter a message for the export email.", $this->_slug)
 						),
 						// Custom field to set the form fields to export.
 						array(
@@ -354,14 +370,17 @@ if ( class_exists( 'GFForms' ) ) {
 			$attachment = file_put_contents( $filename , $data );
 
 			// Send the email and attachment.
-			$to_email = $feed_data['meta']['to_email']
-			$to_email = $feed_data['meta']['from_email']
-			//wp_mail( $feed_data['meta']['to_email'] );
+			$recipient = $feed_data['meta']['export_email_to'];
+			$sender = $feed_data['meta']['export_email_from'];
+			$headers[] = "From: $sender \r\n";
+			$subject = $feed_data['meta']['export_email_subject'];
+			$message = $feed_data['meta']['export_email_message'];
+			wp_mail( $recipient, $subject, $message, $headers, $filename );
+
+			var_dump( $filename ); //for testing
 
 			// Delete the temp CSV file.
-			//@unlink( $filename );
-
-			var_dump( $feed_data );
+			@unlink( $filename );
 		}
 
 	} // END GFScheduledExport Class.
