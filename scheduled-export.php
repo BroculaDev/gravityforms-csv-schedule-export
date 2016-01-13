@@ -201,10 +201,6 @@ if ( class_exists( 'GFForms' ) ) {
 									'value' => 'hourly'
 								),
 								array(
-									'label' => __("Twice Daily", $this->_slug),
-									'value' => 'twicedaily'
-								),
-								array(
 									'label' => __("Daily", $this->_slug),
 									'value' => 'daily'
 								),
