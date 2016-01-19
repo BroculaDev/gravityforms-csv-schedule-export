@@ -84,6 +84,8 @@ if ( class_exists( 'GFForms' ) ) {
 		public function init_ajax() {
 			parent::init_ajax();
 			// add tasks or filters here that you want to perform only during ajax requests.
+
+			//add_action( "wp_ajax_gf_feed_is_active_{$this->_slug}", array( $this, 'ajax_toggle_is_active' ) );
 		}
 
 		/**
@@ -144,7 +146,7 @@ if ( class_exists( 'GFForms' ) ) {
 			foreach ( $choices as $choice ){
 
 				$field_id = $field_name . '_' . $choice_count;
-				$checked = in_array($choice['value'], $saved_settings)  ? ' checked="checked"' : '';
+				$checked = in_array($choice['value'], ( array ) $saved_settings)  ? ' checked="checked"' : '';
 
 				echo '<li>';
 				echo '<input type="checkbox"'. $checked .' id="'. $field_id .'" name="_gaddon_setting_'. $choice['name'] .'" value="'. $choice['value'] .'" class="gform_'. $field_name .'">';
@@ -193,10 +195,6 @@ if ( class_exists( 'GFForms' ) ) {
 							'tooltip' => __("Set how frequently it the entries are exported and emailed", $this->_slug),
 							'choices' => array(
 								array(
-									'label' => __("Every 2 min for testing", $this->_slug),
-									'value' => 'mins'
-								),
-								array(
 									'label' => __("Hourly", $this->_slug),
 									'value' => 'hourly'
 								),
@@ -207,6 +205,10 @@ if ( class_exists( 'GFForms' ) ) {
 								array(
 									'label' => __("Weekly", $this->_slug),
 									'value' => 'weekly'
+								),
+								array(
+									'label' => __("Monthly", $this->_slug),
+									'value' => 'monthly'
 								)
 							)
 						),
@@ -280,6 +282,24 @@ if ( class_exists( 'GFForms' ) ) {
 		}
 
 		/**
+		 * Set/Remove cron jobs when list feed is toggled active/inactive.
+		 *
+		 * @since 1.0.0
+		 */
+		public function ajax_toggle_is_active() {
+			$feed_id   = rgpost( 'feed_id' );
+			$is_active = rgpost( 'is_active' );
+
+			// Update the feed's status.
+			$this->update_feed_active( $feed_id, $is_active );
+
+			// Set/Remove cron job
+			$this->schedule_cron_gfscheduledexport( $feed_id );
+
+			die();
+		}
+
+		/**
 		 * Customize the value of before it's rendered to the list
 		 *
 		 * @since 1.0.0
@@ -315,15 +335,7 @@ if ( class_exists( 'GFForms' ) ) {
 			// TODO: Admin Nonce!
 			// check_admin_referer( 'rg_start_export', 'rg_start_export_nonce' );
 
-			// set_cron_gfscheduledexport( $feed_id, $settings['export_schedule'] );
-
-			//$getstuff = parent::get_feed($feed_id);
-
-			//echo "<pre>";
-			//var_dump($_POST);
-			//echo "</pre>";
-
-			self::gfscheduledexport_cron_job( $feed_id, $form_id );
+			$this->schedule_cron_gfscheduledexport( $feed_id );
 
 			return $result;
 		}
@@ -333,11 +345,56 @@ if ( class_exists( 'GFForms' ) ) {
 		 *
 		 * @since 1.0.0
 		 */
-		public function set_cron_gfscheduledexport( $feed_id, $time_frame ) {
+		public function schedule_cron_gfscheduledexport( $feed_id ) {
 
-			if( ! wp_next_scheduled( 'gfscheduledexport_cron_job' ) ) {
-				wp_schedule_event( time(), $time_frame, 'gfscheduledexport_cron_job', $feed_id );
+			// Collect the feed settings.
+			$feed_data = parent::get_feed( $feed_id );
+			$feed_settings = $feed_data['meta'];
+			$time_frame = $feed_settings['export_schedule'];
+
+			// For Testing.
+			echo "<pre>\n";
+			var_dump($feed_data);
+			echo "</pre>\n";
+
+			// Check the time frame and get the next time to schedule.
+			switch ( $time_frame ) {
+				case 'hourly':
+					$next_time = floor( ( time() + 3600 ) / 3600 ) * 3600;
+				break;
+				case 'daily':
+					$next_time = floor( ( time() + 86400 ) / 86400 ) * 86400;
+				break;
+				case 'weekly':
+					$next_time = strtotime( 'next Monday', strtotime( 'today' ) );
+				break;
+				case 'monthly':
+					$next_time = strtotime( 'first day of next month', strtotime( 'today' ) );
+				break;
+				default:
+				// TODO: Default case to through an error.
+				//add_feed_error();
+
 			}
+
+			// Check if the event is already been scheduled.
+			if ( $timestamp = wp_next_scheduled( 'gfscheduledexport_cron_job', array( $feed_id ) ) ) {
+
+				// Un-schedule...
+				wp_unschedule_event( $timestamp, 'gfscheduledexport_cron_job', array( $feed_id ) );
+
+			}
+
+			// Check if the feed is active.
+			if ( $feed_data['is_active'] ) {
+
+				echo "fire";
+
+				// and then re-schedule the cron event.
+				wp_schedule_single_event( $next_time, 'gfscheduledexport_cron_job', array( $feed_id ) );
+
+			}
+
 		}
 
 		/**
@@ -373,8 +430,6 @@ if ( class_exists( 'GFForms' ) ) {
 			$message = $feed_data['meta']['export_email_message'];
 			wp_mail( $recipient, $subject, $message, $headers, $filename );
 
-			var_dump( $filename ); //for testing
-
 			// Delete the temp CSV file.
 			@unlink( $filename );
 		}
@@ -396,13 +451,13 @@ if ( class_exists( 'GFForms' ) ) {
 	function scheduled_export_cron_add_times( $schedules ) {
 		// Adds once weekly to the existing schedules.
 		$schedules['weekly'] = array(
-			'interval' => 604800,
+			'interval' => 604800, // 7 Days
 			'display' => __( 'Weekly' ),
 		);
 		// Adds once weekly to the existing schedules.
-		$schedules['mins'] = array(
-			'interval' => 120,
-			'display' => __( '2 Minutes' ),
+		$schedules['monthly'] = array(
+			'interval' => 2635200, // 30.5 Days
+			'display' => __('Once a month')
 		);
 		return $schedules;
 	}
