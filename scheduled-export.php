@@ -353,9 +353,9 @@ if ( class_exists( 'GFForms' ) ) {
 			$time_frame = $feed_settings['export_schedule'];
 
 			// For Testing.
-			echo "<pre>\n";
-			var_dump($feed_data);
-			echo "</pre>\n";
+			//echo "<pre>\n";
+			//var_dump($feed_data);
+			//echo "</pre>\n";
 
 			// Check the time frame and get the next time to schedule.
 			switch ( $time_frame ) {
@@ -388,13 +388,31 @@ if ( class_exists( 'GFForms' ) ) {
 			// Check if the feed is active.
 			if ( $feed_data['is_active'] ) {
 
-				echo "fire";
-
-				// and then re-schedule the cron event.
-				wp_schedule_single_event( $next_time, 'gfscheduledexport_cron_job', array( $feed_id ) );
+				// and then re-schedule the cron event.//TODO update call
+				wp_schedule_single_event( $next_time, 'gfscheduledexport_cron_job', array( $feed_id, $next_time ) );
 
 			}
 
+		}
+
+		/**
+		 * Fire on the cron job and request the function for exporting and sending the emails on the correct schedule.
+		 *
+		 * TODO update name
+		 * @since 1.0.0
+		 */
+		public function do_maths( $feed_id, $schedule_time ){
+
+			// Collect the feed settings.
+			$feed_data = parent::get_feed( $feed_id );
+			$feed_settings = $feed_data['meta'];
+			$time_frame = $feed_settings['export_schedule'];
+
+			// Check the time gap
+			$current_time = time();
+			$current_time - $scheduled_time = $time_gap;
+
+			// TODO if it is longer then the interval figure our how many it missed loop through the miss intervals and export and email
 		}
 
 		/**
@@ -402,7 +420,7 @@ if ( class_exists( 'GFForms' ) ) {
 		 *
 		 * @since 1.0.0
 		 */
-		public function gfscheduledexport_cron_job( $feed_id ) {
+		public function gfscheduledexport_cron_job( $feed_id, $scheduled_time ) {
 
 			// Get the feed setting an load them into the $_POST var to us the start_export() filter.
 			$_POST = null;
@@ -410,6 +428,10 @@ if ( class_exists( 'GFForms' ) ) {
 			foreach( $feed_data['meta'] as $key => $value ) {
 				$_POST["$key"] = $value;
 			}
+
+			// TODO: WORK HERE. need to get the time it was scheduled and collect the entries within that time.
+			$scheduled_time;
+			$current_time = time();
 
 			// Call and collect the CSV data.
 			$form = RGFormsModel::get_form_meta( $feed_data['form_id'] );
