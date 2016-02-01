@@ -335,7 +335,29 @@ if ( class_exists( 'GFForms' ) ) {
 			// TODO: Admin Nonce!
 			// check_admin_referer( 'rg_start_export', 'rg_start_export_nonce' );
 
-			$this->schedule_cron_gfscheduledexport( $feed_id );
+			//$this->schedule_cron_gfscheduledexport( $feed_id );
+
+
+			//FOR TESTING
+			$time_frame = $settings['export_schedule'];
+			switch ( $time_frame ) {
+				case 'hourly':
+					$next_time = floor( ( time() - 3600 ) / 3600 ) * 3600; // TESTING HERE
+				break;
+				case 'daily':
+					$next_time = floor( ( time() + 86400 ) / 86400 ) * 86400;
+				break;
+				case 'weekly':
+					$next_time = strtotime( 'next Monday', strtotime( 'today' ) );
+				break;
+				case 'monthly':
+					$next_time = strtotime( 'first day of next month', strtotime( 'today' ) );
+				break;
+				default:
+				// TODO: Default case to through an error.
+				//add_feed_error();
+			}
+			$this->gfscheduledexport_cron_job( $feed_id, $next_time );
 
 			return $result;
 		}
@@ -374,7 +396,6 @@ if ( class_exists( 'GFForms' ) ) {
 				default:
 				// TODO: Default case to through an error.
 				//add_feed_error();
-
 			}
 
 			// Check if the event is already been scheduled.
@@ -401,7 +422,7 @@ if ( class_exists( 'GFForms' ) ) {
 		 * TODO update name
 		 * @since 1.0.0
 		 */
-		public function do_maths( $feed_id, $schedule_time ){
+		public function gfscheduledexport_cron_job( $feed_id, $scheduled_time ){
 
 			// Collect the feed settings.
 			$feed_data = parent::get_feed( $feed_id );
@@ -410,7 +431,55 @@ if ( class_exists( 'GFForms' ) ) {
 
 			// Check the time gap
 			$current_time = time();
-			$current_time - $scheduled_time = $time_gap;
+			$time_gap = $current_time - $scheduled_time;
+
+			$time_missed = 0;
+
+			// Check the time frame and get the next time to schedule.
+			switch ( $time_frame ) {
+				case 'hourly':
+
+					// Find the start time from when the job was scheduled.
+					$export_start = strtotime( '-1 hour', $scheduled_time );
+
+					// Check if the more of the time frame has passed.
+					if ( $time_gap > 3600 ) {
+
+						$time_missed = (int) floor ( $time_gap / 3600 );
+					}
+
+				break;
+				case 'daily':
+					$export_start = strtotime( '-1 day', $scheduled_time );
+				break;
+				case 'weekly':
+					$export_start = strtotime( 'last Monday', $scheduled_time );
+				break;
+				case 'monthly':
+					$export_start = strtotime( 'first day of last month', $scheduled_time );
+				break;
+				default:
+					// TODO: Default case to through an error.
+					//add_feed_error();
+			}
+
+			// Run the first export and email that was scheduled.
+			$this->export_email( $feed_id, $export_start, $scheduled_time );
+
+			if ( $time_missed > 1 ) {
+			//while (  ) {
+				//$this->export_email( $feed_id, $export_start, $scheduled_time );
+			//}
+			}
+
+			//FOR TESTING
+			var_dump( $time_missed );
+			echo "<br>";
+			var_dump( date( DATE_RFC2822, $export_start ) );
+			echo "<br>";
+			var_dump( date( DATE_RFC2822, $scheduled_time ) );
+
+
 
 			// TODO if it is longer then the interval figure our how many it missed loop through the miss intervals and export and email
 		}
@@ -420,7 +489,7 @@ if ( class_exists( 'GFForms' ) ) {
 		 *
 		 * @since 1.0.0
 		 */
-		public function gfscheduledexport_cron_job( $feed_id, $scheduled_time ) {
+		public function export_email ( $feed_id, $export_start, $export_end ) {
 
 			// Get the feed setting an load them into the $_POST var to us the start_export() filter.
 			$_POST = null;
@@ -428,10 +497,6 @@ if ( class_exists( 'GFForms' ) ) {
 			foreach( $feed_data['meta'] as $key => $value ) {
 				$_POST["$key"] = $value;
 			}
-
-			// TODO: WORK HERE. need to get the time it was scheduled and collect the entries within that time.
-			$scheduled_time;
-			$current_time = time();
 
 			// Call and collect the CSV data.
 			$form = RGFormsModel::get_form_meta( $feed_data['form_id'] );
