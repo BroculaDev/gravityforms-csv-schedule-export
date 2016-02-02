@@ -277,7 +277,7 @@ if ( class_exists( 'GFForms' ) ) {
 			return array(
 				'export_feed_name' => __("Name", $this->_slug),
 				'export_schedule'  => __("Time Frame", $this->_slug),
-				'email'			   => __("Email", $this->_slug)
+				'export_email_to'  => __("Email Recipient", $this->_slug)
 			);
 		}
 
@@ -429,14 +429,19 @@ if ( class_exists( 'GFForms' ) ) {
 			$feed_settings = $feed_data['meta'];
 			$time_frame = $feed_settings['export_schedule'];
 
-			// Check the time gap
+			// Check the time gap.
 			$current_time = time();
 			$time_gap = $current_time - $scheduled_time;
 
+			// Set the first exports end time.
+			$export_end = $scheduled_time;
+
+			// Set the time missed.
 			$time_missed = 0;
 
 			// Check the time frame and get the next time to schedule.
 			switch ( $time_frame ) {
+
 				case 'hourly':
 
 					// Find the start time from when the job was scheduled.
@@ -445,19 +450,49 @@ if ( class_exists( 'GFForms' ) ) {
 					// Check if the more of the time frame has passed.
 					if ( $time_gap > 3600 ) {
 
+						// Get the number of hours missed. This code might run.
 						$time_missed = (int) floor ( $time_gap / 3600 );
 					}
 
 				break;
+
 				case 'daily':
+
+					// Find the start time from when the job was scheduled.
 					$export_start = strtotime( '-1 day', $scheduled_time );
+
+					// Check if the more of the time frame has passed.
+					if ( $time_gap > 86400 ) {
+
+						// Get the number of days missed. This code probably won't need to run.
+						$time_missed = (int) floor ( $time_gap / 86400 );
+					}
+
 				break;
+
 				case 'weekly':
+
+					// Find the start time from when the job was scheduled.
 					$export_start = strtotime( 'last Monday', $scheduled_time );
+
+					// Check if the more of the time frame has passed.
+					if ( $time_gap > 604800 ) {
+
+						// Get the number of days missed. This code should not need to run.
+						$time_missed = (int) floor ( $time_gap / 604800 );
+					}
+
 				break;
+
 				case 'monthly':
+
+					// Find the start time from when the job was scheduled.
 					$export_start = strtotime( 'first day of last month', $scheduled_time );
+
+					// If this code need to run cron isn't running much, and your site has some issues.
+
 				break;
+
 				default:
 					// TODO: Default case to through an error.
 					//add_feed_error();
