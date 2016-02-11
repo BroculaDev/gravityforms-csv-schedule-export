@@ -489,7 +489,12 @@ if ( class_exists( 'GFForms' ) ) {
 					// Find the start time from when the job was scheduled.
 					$export_start = strtotime( 'first day of last month', $scheduled_time );
 
-					// If this code need to run cron isn't running much, and your site has some issues.
+					// Check if the more of the time frame has passed. If this code need to run cron isn't running much, and your site has some issues.
+					if ( $time_gap > 2592000 ) { // Seconds in 30 Days
+
+						// Get the number of days missed. This code should not need to run.
+						$time_missed = (int) floor ( $time_gap / 2592000 );
+					}
 
 				break;
 
@@ -502,9 +507,13 @@ if ( class_exists( 'GFForms' ) ) {
 			$this->export_email( $feed_id, $export_start, $scheduled_time );
 
 			if ( $time_missed > 1 ) {
-			//while (  ) {
-				//$this->export_email( $feed_id, $export_start, $scheduled_time );
-			//}
+				while ( $time_missed > 0 ) {
+
+					$export_start = $export_end;
+					//$export_end = strtotime( 'first day of next month', $export_start ); // TODO: this need to be set to the correct time frame
+
+					$this->export_email( $feed_id, $export_start, $scheduled_time );
+				}
 			}
 
 			//FOR TESTING
