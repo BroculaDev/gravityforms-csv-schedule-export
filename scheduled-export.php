@@ -335,29 +335,7 @@ if ( class_exists( 'GFForms' ) ) {
 			// TODO: Admin Nonce!
 			// check_admin_referer( 'rg_start_export', 'rg_start_export_nonce' );
 
-			//$this->schedule_cron_gfscheduledexport( $feed_id );
-
-
-			//FOR TESTING
-			$time_frame = $settings['export_schedule'];
-			switch ( $time_frame ) {
-				case 'hourly':
-					$next_time = floor( ( time() - 3600 ) / 3600 ) * 3600; // TESTING HERE
-				break;
-				case 'daily':
-					$next_time = floor( ( time() + 86400 ) / 86400 ) * 86400;
-				break;
-				case 'weekly':
-					$next_time = strtotime( 'next Monday', strtotime( 'today' ) );
-				break;
-				case 'monthly':
-					$next_time = strtotime( 'first day of next month', strtotime( 'today' ) );
-				break;
-				default:
-				// TODO: Default case to through an error.
-				//add_feed_error();
-			}
-			$this->gfscheduledexport_cron_job( $feed_id, $next_time );
+			$this->schedule_cron_gfscheduledexport( $feed_id );
 
 			return $result;
 		}
@@ -374,10 +352,6 @@ if ( class_exists( 'GFForms' ) ) {
 			$feed_settings = $feed_data['meta'];
 			$time_frame = $feed_settings['export_schedule'];
 
-			// For Testing.
-			//echo "<pre>\n";
-			//var_dump($feed_data);
-			//echo "</pre>\n";
 
 			// Check the time frame and get the next time to schedule.
 			switch ( $time_frame ) {
@@ -445,56 +419,52 @@ if ( class_exists( 'GFForms' ) ) {
 				case 'hourly':
 
 					// Find the start time from when the job was scheduled.
-					$export_start = strtotime( '-1 hour', $scheduled_time );
+					$export_start = strtotime( '-1 hour', $export_end );
 
-					// Check if the more of the time frame has passed.
-					if ( $time_gap > 3600 ) {
+					// String used in the time gap loop below
+					$time_frame_text = '+1 hour';
 
-						// Get the number of hours missed. This code might run.
-						$time_missed = (int) floor ( $time_gap / 3600 );
-					}
+					// Seconds in 1 hour.
+					$time_frame_sec = 3600;
 
 				break;
 
 				case 'daily':
 
 					// Find the start time from when the job was scheduled.
-					$export_start = strtotime( '-1 day', $scheduled_time );
+					$export_start = strtotime( '-1 day', $export_end );
 
-					// Check if the more of the time frame has passed.
-					if ( $time_gap > 86400 ) {
+					// String used in the time gap loop below
+					$time_frame_text = '+1 day';
 
-						// Get the number of days missed. This code probably won't need to run.
-						$time_missed = (int) floor ( $time_gap / 86400 );
-					}
+					// Seconds in 1 days.
+					$time_frame_sec = 86400;
 
 				break;
 
 				case 'weekly':
 
 					// Find the start time from when the job was scheduled.
-					$export_start = strtotime( 'last Monday', $scheduled_time );
+					$export_start = strtotime( 'last Monday', $export_end );
 
-					// Check if the more of the time frame has passed.
-					if ( $time_gap > 604800 ) {
+					// String used in the time gap loop below
+					$time_frame_text = 'next Monday';
 
-						// Get the number of days missed. This code should not need to run.
-						$time_missed = (int) floor ( $time_gap / 604800 );
-					}
+					// Seconds in 7 days.
+					$time_frame_sec = 604800;
 
 				break;
 
 				case 'monthly':
 
 					// Find the start time from when the job was scheduled.
-					$export_start = strtotime( 'first day of last month', $scheduled_time );
+					$export_start = strtotime( 'first day of last month', $export_end );
 
-					// Check if the more of the time frame has passed. If this code need to run cron isn't running much, and your site has some issues.
-					if ( $time_gap > 2592000 ) { // Seconds in 30 Days
+					// String used in the time gap loop below
+					$time_frame_text = 'first day of next month';
 
-						// Get the number of days missed. This code should not need to run.
-						$time_missed = (int) floor ( $time_gap / 2592000 );
-					}
+					// Seconds in 30 days.
+					$time_frame_sec = 2592000;
 
 				break;
 
@@ -503,29 +473,24 @@ if ( class_exists( 'GFForms' ) ) {
 					//add_feed_error();
 			}
 
+			// Get the number of days missed. This code should not need to run.
+			$time_missed = (int) floor ( $time_gap / $time_frame_sec );
+
 			// Run the first export and email that was scheduled.
-			$this->export_email( $feed_id, $export_start, $scheduled_time );
+			$this->export_email( $feed_id, $export_start, $export_end );
 
 			if ( $time_missed > 1 ) {
+
 				while ( $time_missed > 0 ) {
 
+					// Update the export start and end time based on the set time frame.
 					$export_start = $export_end;
-					//$export_end = strtotime( 'first day of next month', $export_start ); // TODO: this need to be set to the correct time frame
+					$export_end = strtotime( $time_frame_text, $export_start );
 
+					// Run the export email for the missed time.
 					$this->export_email( $feed_id, $export_start, $scheduled_time );
 				}
 			}
-
-			//FOR TESTING
-			var_dump( $time_missed );
-			echo "<br>";
-			var_dump( date( DATE_RFC2822, $export_start ) );
-			echo "<br>";
-			var_dump( date( DATE_RFC2822, $scheduled_time ) );
-
-
-
-			// TODO if it is longer then the interval figure our how many it missed loop through the miss intervals and export and email
 		}
 
 		/**
