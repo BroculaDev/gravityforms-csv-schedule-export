@@ -488,9 +488,13 @@ if ( class_exists( 'GFForms' ) ) {
 					$export_end = strtotime( $time_frame_text, $export_start );
 
 					// Run the export email for the missed time.
-					$this->export_email( $feed_id, $export_start, $scheduled_time );
+					$this->export_email( $feed_id, $export_start, $export_end );
 				}
 			}
+
+			// Reschedule the event
+			$this->schedule_cron_gfscheduledexport( $feed_id );
+
 		}
 
 		/**
