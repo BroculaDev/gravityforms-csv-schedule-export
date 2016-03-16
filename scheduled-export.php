@@ -492,7 +492,7 @@ if ( class_exists( 'GFForms' ) ) {
 				}
 			}
 
-			// Reschedule the event
+			// Reschedule the event.
 			$this->schedule_cron_gfscheduledexport( $feed_id );
 
 		}
@@ -537,29 +537,4 @@ if ( class_exists( 'GFForms' ) ) {
 	} // END GFScheduledExport Class.
 
 	new GFScheduledExport();
-
-	/**
-	 * TODO: Use alternative to that it can be sent at the first of the Week/Month
-	 * Add time frame options to the cron schedule
-	 *
-	 * TODO: Check if this should be in the class and if show where it should init?
-	 *
-	 * @reference https://codex.wordpress.org/Function_Reference/wp_get_schedules
-	 * @since 1.0.0
-	 * @param array $schedules
-	 */
-	function scheduled_export_cron_add_times( $schedules ) {
-		// Adds once weekly to the existing schedules.
-		$schedules['weekly'] = array(
-			'interval' => 604800, // 7 Days
-			'display' => __( 'Weekly' ),
-		);
-		// Adds once weekly to the existing schedules.
-		$schedules['monthly'] = array(
-			'interval' => 2635200, // 30.5 Days
-			'display' => __('Once a month')
-		);
-		return $schedules;
-	}
-	add_filter( 'cron_schedules', 'scheduled_export_cron_add_times' );
 }
