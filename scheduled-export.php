@@ -194,10 +194,12 @@ if ( class_exists( 'GFForms' ) ) {
 							'label'   => __("Time Frame", $this->_slug),
 							'tooltip' => __("Set how frequently it the entries are exported and emailed", $this->_slug),
 							'choices' => array(
+								/* Removed due to how GFExport:start_export works
 								array(
 									'label' => __("Hourly", $this->_slug),
 									'value' => 'hourly'
 								),
+								*/
 								array(
 									'label' => __("Daily", $this->_slug),
 									'value' => 'daily'
@@ -291,10 +293,10 @@ if ( class_exists( 'GFForms' ) ) {
 			$is_active = rgpost( 'is_active' );
 
 			// Update the feed's status.
-			$this->update_feed_active( $feed_id, $is_active );
+			self::update_feed_active( $feed_id, $is_active );
 
 			// Set/Remove cron job
-			$this->schedule_cron_gfscheduledexport( $feed_id );
+			self::schedule_cron_job( $feed_id );
 
 			die();
 		}
@@ -326,16 +328,16 @@ if ( class_exists( 'GFForms' ) ) {
 
 			// Save the feed settings to the database.
 			if ($feed_id ) {
-				$this->update_feed_meta( $feed_id, $settings );
+				self::update_feed_meta( $feed_id, $settings );
 				$result = $feed_id;
 			} else {
-				$result = $this->insert_feed( $form_id, true, $settings );
+				$result = self::insert_feed( $form_id, true, $settings );
 			}
 
 			// TODO: Admin Nonce!
 			// check_admin_referer( 'rg_start_export', 'rg_start_export_nonce' );
 
-			$this->schedule_cron_gfscheduledexport( $feed_id );
+			self::schedule_cron_job( $feed_id );
 
 			return $result;
 		}
@@ -345,7 +347,7 @@ if ( class_exists( 'GFForms' ) ) {
 		 *
 		 * @since 1.0.0
 		 */
-		public function schedule_cron_gfscheduledexport( $feed_id ) {
+		public function schedule_cron_job( $feed_id ) {
 
 			// Collect the feed settings.
 			$feed_data = parent::get_feed( $feed_id );
@@ -355,9 +357,11 @@ if ( class_exists( 'GFForms' ) ) {
 
 			// Check the time frame and get the next time to schedule.
 			switch ( $time_frame ) {
+				/* Removed due to how GFExport:start_export works
 				case 'hourly':
 					$next_time = floor( ( time() + 3600 ) / 3600 ) * 3600;
 				break;
+				*/
 				case 'daily':
 					$next_time = floor( ( time() + 86400 ) / 86400 ) * 86400;
 				break;
@@ -405,7 +409,7 @@ if ( class_exists( 'GFForms' ) ) {
 
 			// Check the time gap.
 			$current_time = time();
-			$time_gap = $current_time - $scheduled_time;
+			$time_gap = $scheduled_time - $current_time;
 
 			// Set the first exports end time.
 			$export_end = $scheduled_time;
@@ -416,6 +420,7 @@ if ( class_exists( 'GFForms' ) ) {
 			// Check the time frame and get the next time to schedule.
 			switch ( $time_frame ) {
 
+				/* Removed due to how GFExport:start_export works
 				case 'hourly':
 
 					// Find the start time from when the job was scheduled.
@@ -428,6 +433,7 @@ if ( class_exists( 'GFForms' ) ) {
 					$time_frame_sec = 3600;
 
 				break;
+				*/
 
 				case 'daily':
 
@@ -474,12 +480,16 @@ if ( class_exists( 'GFForms' ) ) {
 			}
 
 			// Get the number of days missed. This code should not need to run.
-			$time_missed = (int) floor ( $time_gap / $time_frame_sec );
+			$time_missed = floor( $time_gap / $time_frame_sec );
+
+			// Format the start and end dates
+			$export_date_start = date( 'Y-m-d', $export_start );
+			$export_date_end = date( 'Y-m-d', $export_end );
 
 			// Run the first export and email that was scheduled.
-			$this->export_email( $feed_id, $export_start, $export_end );
+			self::export_email( $feed_id, $export_date_start, $export_date_end );
 
-			if ( $time_missed > 1 ) {
+			if ( $time_missed > 0 ) {
 
 				while ( $time_missed > 0 ) {
 
@@ -487,13 +497,19 @@ if ( class_exists( 'GFForms' ) ) {
 					$export_start = $export_end;
 					$export_end = strtotime( $time_frame_text, $export_start );
 
+					// Format the start and end dates.
+					$export_date_start = date( 'Y-m-d', $export_start );
+					$export_date_end = date( 'Y-m-d', $export_end );
+
 					// Run the export email for the missed time.
-					$this->export_email( $feed_id, $export_start, $export_end );
+					self::export_email( $feed_id, $export_date_start, $export_date_end );
+
+					$time_missed--;
 				}
 			}
 
 			// Reschedule the event.
-			$this->schedule_cron_gfscheduledexport( $feed_id );
+			self::schedule_cron_job( $feed_id );
 
 		}
 
@@ -510,6 +526,10 @@ if ( class_exists( 'GFForms' ) ) {
 			foreach( $feed_data['meta'] as $key => $value ) {
 				$_POST["$key"] = $value;
 			}
+
+			// Load the start and end date into the $_POST if available
+			$_POST['export_date_start'] = empty( $export_start ) ? '' : $export_start;
+			$_POST['export_date_end'] = empty( $export_end ) ? '' : $export_end;
 
 			// Call and collect the CSV data.
 			$form = RGFormsModel::get_form_meta( $feed_data['form_id'] );
