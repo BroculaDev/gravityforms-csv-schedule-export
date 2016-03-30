@@ -68,6 +68,7 @@ if ( class_exists( 'GFForms' ) ) {
 		public function init() {
 			parent::init();
 			// add tasks or filters here that you want to perform both in the backend and frontend and for ajax requests.
+			add_action( 'gfscheduledexport_cron_job', array( $this, 'run_cron_job' ), 10, 2 );
 		}
 
 		public function init_admin() {
@@ -293,10 +294,10 @@ if ( class_exists( 'GFForms' ) ) {
 			$is_active = rgpost( 'is_active' );
 
 			// Update the feed's status.
-			self::update_feed_active( $feed_id, $is_active );
+			$this->update_feed_active( $feed_id, $is_active );
 
 			// Set/Remove cron job
-			self::schedule_cron_job( $feed_id );
+			$this->schedule_cron_job( $feed_id );
 
 			die();
 		}
@@ -328,16 +329,16 @@ if ( class_exists( 'GFForms' ) ) {
 
 			// Save the feed settings to the database.
 			if ($feed_id ) {
-				self::update_feed_meta( $feed_id, $settings );
+				$this->update_feed_meta( $feed_id, $settings );
 				$result = $feed_id;
 			} else {
-				$result = self::insert_feed( $form_id, true, $settings );
+				$result = $this->insert_feed( $form_id, true, $settings );
 			}
 
 			// TODO: Admin Nonce!
 			// check_admin_referer( 'rg_start_export', 'rg_start_export_nonce' );
 
-			self::schedule_cron_job( $feed_id );
+			$this->schedule_cron_job( $feed_id );
 
 			return $result;
 		}
@@ -400,7 +401,7 @@ if ( class_exists( 'GFForms' ) ) {
 		 * TODO update name
 		 * @since 1.0.0
 		 */
-		public function gfscheduledexport_cron_job( $feed_id, $scheduled_time ){
+		public function run_cron_job( $feed_id, $scheduled_time ){
 
 			// Collect the feed settings.
 			$feed_data = parent::get_feed( $feed_id );
@@ -487,7 +488,7 @@ if ( class_exists( 'GFForms' ) ) {
 			$export_date_end = date( 'Y-m-d', $export_end );
 
 			// Run the first export and email that was scheduled.
-			self::export_email( $feed_id, $export_date_start, $export_date_end );
+			$this->export_email( $feed_id, $export_date_start, $export_date_end );
 
 			if ( $time_missed > 0 ) {
 
@@ -502,14 +503,14 @@ if ( class_exists( 'GFForms' ) ) {
 					$export_date_end = date( 'Y-m-d', $export_end );
 
 					// Run the export email for the missed time.
-					self::export_email( $feed_id, $export_date_start, $export_date_end );
+					$this->export_email( $feed_id, $export_date_start, $export_date_end );
 
 					$time_missed--;
 				}
 			}
 
 			// Reschedule the event.
-			self::schedule_cron_job( $feed_id );
+			$this->schedule_cron_job( $feed_id );
 
 		}
 
